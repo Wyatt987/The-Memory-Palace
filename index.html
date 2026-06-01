@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Memory Palace</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --stone: #1a1510;
+    --marble: #f0ebe0;
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --rust: #8b3a2a;
+    --moss: #3d5a3e;
+    --shadow: #0d0b08;
+    --mist: rgba(240,235,224,0.07);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--stone);
+    color: var(--marble);
+    font-family: 'Crimson Pro', serif;
+    font-size: 18px;
+    overflow-x: hidden;
+    cursor: default;
+  }
+
+  /* Grain texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  /* ─── ENTRY GATE ─── */
+  #gate {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 4rem 2rem;
+    text-align: center;
+    background: radial-gradient(ellipse 80% 60% at 50% 40%, #2e2318 0%, var(--stone) 70%);
+  }
+
+  .gate-columns {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .col {
+    width: 6px;
+    background: linear-gradient(to bottom, transparent, var(--gold) 20%, var(--gold) 80%, transparent);
+    opacity: 0.18;
+    margin: 0 8vw;
+  }
+  .col:nth-child(2) { margin: 0 22vw; opacity: 0.1; }
+  .col:nth-child(3) { margin: 0 36vw; opacity: 0.06; }
+
+  .eyebrow {
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.35em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeUp 1s 0.3s forwards;
+  }
+
+  h1 {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(3.5rem, 10vw, 8rem);
+    font-weight: 900;
+    line-height: 0.9;
+    color: var(--marble);
+    text-shadow: 0 0 80px rgba(201,168,76,0.3), 0 4px 40px rgba(0,0,0,0.8);
+    opacity: 0;
+    animation: fadeUp 1.2s 0.6s forwards;
+    letter-spacing: -0.02em;
+  }
+
+  h1 span {
+    display: block;
+    color: var(--gold);
+  }
+
+  .subtitle {
+    max-width: 560px;
+    margin: 2rem auto 0;
+    color: rgba(240,235,224,0.6);
+    font-style: italic;
+    font-size: 1.1rem;
+    line-height: 1.7;
+    opacity: 0;
+    animation: fadeUp 1s 1s forwards;
+  }
+
+  .enter-btn {
+    margin-top: 3.5rem;
+    padding: 1rem 3rem;
+    background: transparent;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    font-family: 'Cinzel', serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: color 0.4s;
+    opacity: 0;
+    animation: fadeUp 1s 1.3s forwards;
+  }
+  .enter-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--gold);
+    transform: translateX(-100%);
+    transition: transform 0.4s cubic-bezier(.4,0,.2,1);
+  }
+  .enter-btn:hover { color: var(--stone); }
+  .enter-btn:hover::before { transform: translateX(0); }
+  .enter-btn span { position: relative; z-index: 1; }
+
+  /* ─── PALACE MAP ─── */
+  #palace {
+    display: none;
+    min-height: 100vh;
+    padding: 3rem 0 6rem;
+  }
+
+  .palace-header {
+    text-align: center;
+    padding: 0 2rem 4rem;
+  }
+  .palace-header .eyebrow { opacity: 1; animation: none; }
+  .palace-header h2 {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 700;
+    color: var(--marble);
+    margin-top: 0.5rem;
+  }
+  .palace-header p {
+    max-width: 580px;
+    margin: 1rem auto 0;
+    color: rgba(240,235,224,0.55);
+    font-style: italic;
+    line-height: 1.7;
+  }
+
+  /* ─── ROOMS GRID ─── */
+  .rooms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  .room {
+    position: relative;
+    background: #201b14;
+    padding: 2.5rem;
+    cursor: pointer;
+    overflow: hidden;
+    border: 1px solid rgba(201,168,76,0.08);
+    transition: border-color 0.3s;
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+
+  .room::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .room:hover { border-color: rgba(201,168,76,0.3); }
+  .room:hover::before { opacity: 1; }
+
+  .room-1::before { background: radial-gradient(circle at 30% 70%, rgba(139,58,42,0.25) 0%, transparent 70%); }
+  .room-2::before { background: radial-gradient(circle at 70% 30%, rgba(61,90,62,0.25) 0%, transparent 70%); }
+  .room-3::before { background: radial-gradient(circle at 50% 80%, rgba(201,168,76,0.15) 0%, transparent 70%); }
+  .room-4::before { background: radial-gradient(circle at 20% 50%, rgba(100,80,140,0.2) 0%, transparent 70%); }
+  .room-5::before { background: radial-gradient(circle at 80% 60%, rgba(42,100,120,0.25) 0%, transparent 70%); }
+  .room-6::before { background: radial-gradient(circle at 40% 40%, rgba(180,100,40,0.2) 0%, transparent 70%); }
+
+  .room-number {
+    font-family: 'Cinzel', serif;
+    font-size: 5rem;
+    font-weight: 900;
+    color: rgba(201,168,76,0.08);
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+    line-height: 1;
+    transition: color 0.4s;
+    user-select: none;
+  }
+  .room:hover .room-number { color: rgba(201,168,76,0.15); }
+
+  .room-icon {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  .room-tag {
+    font-family: 'Cinzel', serif;
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+    opacity: 0.7;
+  }
+
+  .room h3 {
+    font-family: 'Cinzel', serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--marble);
+    margin-bottom: 0.8rem;
+    line-height: 1.3;
+  }
+
+  .room p {
+    font-size: 0.95rem;
+    color: rgba(240,235,224,0.5);
+    line-height: 1.6;
+    font-style: italic;
+  }
+
+  .room-arrow {
+    position: absolute;
+    bottom: 2rem;
+    right: 2rem;
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(201,168,76,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gold);
+    font-size: 1rem;
+    opacity: 0;
+    transform: translateX(-8px);
+    transition: opacity 0.3s, transform 0.3s;
+  }
+  .room:hover .room-arrow { opacity: 1; transform: translateX(0); }
+
+  /* ─── MODAL ─── */
+  #modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(10,8,6,0.92);
+    backdrop-filter: blur(8px);
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    overflow-y: auto;
+  }
+  #modal.open { display: flex; }
+
+  .modal-inner {
+    background: linear-gradient(135deg, #221d15 0%, #1a1510 100%);
+    border: 1px solid rgba(201,168,76,0.2);
+    max-width: 720px;
+    width: 100%;
+    padding: 3.5rem;
+    position: relative;
+    animation: scaleIn 0.35s cubic-bezier(.4,0,.2,1);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-inner::-webkit-scrollbar { width: 4px; }
+  .modal-inner::-webkit-scrollbar-track { background: transparent; }
+  .modal-inner::-webkit-scrollbar-thumb { background: var(--gold); opacity: 0.3; }
+
+  .modal-close {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(201,168,76,0.3);
+    background: transparent;
+    color: var(--gold);
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+  }
+  .modal-close:hover { background: rgba(201,168,76,0.1); }
+
+  .modal-eyebrow {
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.35em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 0.8rem;
+  }
+  .modal-title {
+    font-family: 'Cinzel', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--marble);
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
+  }
+  .modal-locus {
+    font-style: italic;
+    color: rgba(240,235,224,0.4);
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid rgba(201,168,76,0.1);
+  }
+
+  .section-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 0.8rem;
+    opacity: 0.7;
+  }
+
+  .modal-content-block {
+    margin-bottom: 2rem;
+  }
+
+  .modal-content-block p {
+    color: rgba(240,235,224,0.75);
+    line-height: 1.8;
+    font-size: 1rem;
+  }
+
+  .mnemonic-box {
+    background: rgba(201,168,76,0.06);
+    border-left: 3px solid var(--gold);
+    padding: 1.2rem 1.5rem;
+    margin: 1.5rem 0;
+  }
+  .mnemonic-box .mnemonic-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.6rem;
+    letter-spacing: 0.25em;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .mnemonic-box .mnemonic-text {
+    font-size: 1.1rem;
+    color: var(--marble);
+    font-weight: 300;
+  }
+  .mnemonic-box .mnemonic-text strong {
+    color: var(--gold-light);
+    font-style: italic;
+  }
+
+  .chunks {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .chunk {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(201,168,76,0.1);
+    padding: 1rem;
+    text-align: center;
+  }
+  .chunk .chunk-icon { font-size: 1.5rem; margin-bottom: 0.4rem; }
+  .chunk .chunk-name { font-family: 'Cinzel', serif; font-size: 0.75rem; color: var(--gold); }
+  .chunk .chunk-desc { font-size: 0.8rem; color: rgba(240,235,224,0.45); margin-top: 0.3rem; font-style: italic; }
+
+  /* ─── TECHNIQUE LEGEND ─── */
+  #legend {
+    max-width: 900px;
+    margin: 5rem auto 0;
+    padding: 0 2rem;
+  }
+  .legend-title {
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    letter-spacing: 0.2em;
+    color: var(--gold);
+    text-align: center;
+    margin-bottom: 2.5rem;
+    text-transform: uppercase;
+  }
+  .techniques {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+  }
+  .technique {
+    background: #201b14;
+    padding: 2rem;
+    border: 1px solid rgba(201,168,76,0.07);
+    text-align: center;
+  }
+  .technique-icon { font-size: 2rem; margin-bottom: 1rem; }
+  .technique h4 {
+    font-family: 'Cinzel', serif;
+    font-size: 0.9rem;
+    color: var(--marble);
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.05em;
+  }
+  .technique p {
+    font-size: 0.85rem;
+    color: rgba(240,235,224,0.4);
+    font-style: italic;
+    line-height: 1.6;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.96) translateY(16px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  @media (max-width: 600px) {
+    .techniques { grid-template-columns: 1fr; }
+    .modal-inner { padding: 2rem 1.5rem; }
+    h1 { font-size: 3.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── GATE ─── -->
+<section id="gate">
+  <div class="gate-columns">
+    <div class="col"></div><div class="col"></div><div class="col"></div>
+    <div class="col"></div><div class="col"></div><div class="col"></div>
+  </div>
+
+  <p class="eyebrow">A Study Method from Ancient Rome</p>
+  <h1>The Memory<span>Palace</span></h1>
+  <p class="subtitle">
+    Walk through a mental architecture built to hold complex knowledge. Each chamber guards a lesson — anchored in place, image, and meaning.
+  </p>
+  <button class="enter-btn" onclick="enterPalace()"><span>Enter the Palace →</span></button>
+</section>
+
+<!-- ─── PALACE ─── -->
+<section id="palace">
+  <div class="palace-header">
+    <p class="eyebrow">Method of Loci · Mnemonics · Chunking</p>
+    <h2>Choose Your Chamber</h2>
+    <p>Each room corresponds to a concept in your unit. Visit each one, absorb the memory anchor, then walk on.</p>
+  </div>
+
+  <div class="rooms-grid">
+
+    <div class="room room-1" onclick="openRoom(0)">
+      <div class="room-number">I</div>
+      <div class="room-icon">🏛️</div>
+      <div class="room-tag">The Foyer · Method of Loci</div>
+      <h3>What Is the Memory Palace?</h3>
+      <p>The ancient technique of placing ideas inside imagined spaces — from Simonides to Cicero.</p>
+      <div class="room-arrow">→</div>
+    </div>
+
+    <div class="room room-2" onclick="openRoom(1)">
+      <div class="room-number">II</div>
+      <div class="room-icon">🧩</div>
+      <div class="room-tag">The Library · Chunking</div>
+      <h3>Chunking: Break It Down</h3>
+      <p>Grouping information into meaningful clusters so working memory isn't overwhelmed.</p>
+      <div class="room-arrow">→</div>
+    </div>
+
+    <div class="room room-3" onclick="openRoom(2)">
+      <div class="room-number">III</div>
+      <div class="room-icon">🔤</div>
+      <div class="room-tag">The Study · Mnemonics</div>
+      <h3>Mnemonics: Hooks for the Mind</h3>
+      <p>Acronyms, rhymes, vivid images — encoding tricks that transform forgettable facts.</p>
+      <div class="room-arrow">→</div>
+    </div>
+
+    <div class="room room-4" onclick="openRoom(3)">
+      <div class="room-number">IV</div>
+      <div class="room-icon">🗺️</div>
+      <div class="room-tag">The Map Room · Loci in Practice</div>
+      <h3>Building Your Route</h3>
+      <p>How to construct a personal palace — selecting locations, placing images, rehearsing the walk.</p>
+      <div class="room-arrow">→</div>
+    </div>
+
+    <div class="room room-5" onclick="openRoom(4)">
+      <div class="room-number">V</div>
+      <div class="room-icon">⚡</div>
+      <div class="room-tag">The Workshop · Deep Encoding</div>
+      <h3>Encoding with Emotion & Absurdity</h3>
+      <p>Why the stranger and more vivid the image, the better it sticks — the Von Restorff effect.</p>
+      <div class="room-arrow">→</div>
+    </div>
+
+    <div class="room room-6" onclick="openRoom(5)">
+      <div class="room-number">VI</div>
+      <div class="room-icon">🎓</div>
+      <div class="room-tag">The Exit Hall · Student Practice</div>
+      <h3>Build Your Own Palace</h3>
+      <p>A step-by-step framework for students to design a palace around any unit of study.</p>
+      <div class="room-arrow">→</div>
+    </div>
+
+  </div>
+
+  <!-- Technique Legend -->
+  <div id="legend">
+    <p class="legend-title">Three Pillars of this Method</p>
+    <div class="techniques">
+      <div class="technique">
+        <div class="technique-icon">📍</div>
+        <h4>Method of Loci</h4>
+        <p>Bind information to imagined locations along a familiar route or building.</p>
+      </div>
+      <div class="technique">
+        <div class="technique-icon">🧩</div>
+        <h4>Chunking</h4>
+        <p>Group related items into clusters so working memory holds 4±1 units at once.</p>
+      </div>
+      <div class="technique">
+        <div class="technique-icon">🔤</div>
+        <h4>Mnemonics</h4>
+        <p>Acronyms, rhymes, peg words, and imagery that create retrieval hooks.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── MODAL ─── -->
+<div id="modal">
+  <div class="modal-inner">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<script>
+const rooms = [
+  {
+    eyebrow: "Chamber I · The Foyer",
+    title: "What Is the Memory Palace?",
+    locus: "You stand at the great front door. A marble pillar on the left is carved with a man's face — Simonides — pointing back inside at empty seats.",
+    sections: [
+      {
+        label: "The Core Idea",
+        text: "The Memory Palace (Method of Loci) is over 2,500 years old. The Greek poet Simonides survived a banquet hall collapse and was able to identify every victim by remembering exactly where each guest sat. This moment revealed the brain's extraordinary ability to recall spatial information — far better than abstract lists."
+      },
+      {
+        label: "Why It Works",
+        text: "Our brains evolved navigating physical environments. Spatial memory (hippocampus) is deeply tied to episodic memory. By placing ideas inside an imagined space, we exploit one of the brain's strongest memory systems — turning abstract concepts into vivid locations you can literally 'walk through' during recall."
+      },
+      {
+        mnemonic: true,
+        label: "Your Anchor Phrase",
+        text: "<strong>\"S.I.P. your palace\"</strong> — Space, Image, Path. Every memory palace needs a familiar Space, a vivid Image at each stop, and a consistent Path to follow."
+      }
+    ]
+  },
+  {
+    eyebrow: "Chamber II · The Library",
+    title: "Chunking: Break It Down",
+    locus: "Towering bookshelves line the walls. The books are grouped by colour — not alphabetically — and each colour cluster seems to pulse as a single unit.",
+    sections: [
+      {
+        label: "What Is Chunking?",
+        text: "Psychologist George Miller (1956) found working memory holds roughly 7±2 items — but those 'items' can be chunks of any size. A chunk is any meaningful group. The word MEMORY is 6 letters, but one chunk. A phone number 555-867-5309 is 9 digits, but 3 chunks."
+      },
+      {
+        label: "Chunking in Your Palace",
+        text: "Each room in your palace should hold ONE chunk, not a list of facts. Inside the room, arrange sub-items as objects in that space. When you recall the room, you recall the whole chunk at once — like lifting a box, not picking up individual items one by one."
+      },
+      {
+        chunk: true,
+        items: [
+          { icon: "🗃️", name: "Group", desc: "Cluster related ideas together" },
+          { icon: "🏷️", name: "Label", desc: "Give each chunk one name" },
+          { icon: "🔗", name: "Link", desc: "Connect chunk to a room" },
+          { icon: "🔁", name: "Rehearse", desc: "Walk the route daily" }
+        ]
+      }
+    ]
+  },
+  {
+    eyebrow: "Chamber III · The Study",
+    title: "Mnemonics: Hooks for the Mind",
+    locus: "A heavy oak desk is covered in odd objects: a red HOMES-shaped flag, a knuckle-shaped calendar, a ROY G BIV painted on the window.",
+    sections: [
+      {
+        label: "Types of Mnemonics",
+        text: "Mnemonics are encoding shortcuts that tie new information to something already known. The three most powerful types are: Acronyms (first letters spell a word), Acrostics (first letters form a sentence), and Keyword/Image (a sound-alike word paired with a vivid image)."
+      },
+      {
+        mnemonic: true,
+        label: "Classic Acronym Example",
+        text: "<strong>HOMES</strong> = Huron, Ontario, Michigan, Erie, Superior — the Great Lakes. Or ROY G BIV for the visible light spectrum. One word unlocks five facts."
+      },
+      {
+        mnemonic: true,
+        label: "Acrostic Example",
+        text: "<strong>\"King Philip Came Over For Good Soup\"</strong> — Kingdom, Phylum, Class, Order, Family, Genus, Species. A vivid story beats a dry list every time."
+      },
+      {
+        label: "Placing Mnemonics in Your Palace",
+        text: "Don't just memorize the mnemonic — place a vivid scene in your palace room. For HOMES, imagine five canoes labeled H-O-M-E-S crashing through your kitchen window into the sink. Now the room, the image, and the mnemonic all reinforce each other."
+      }
+    ]
+  },
+  {
+    eyebrow: "Chamber IV · The Map Room",
+    title: "Building Your Route",
+    locus: "A large architectural blueprint spreads across the central table, marked with arrows and strange icons at each doorway — a torch, a boot, a laughing skull.",
+    sections: [
+      {
+        label: "Step 1 — Choose Your Palace",
+        text: "Pick a place you know intimately: your childhood home, your school route, a favourite walk. The more vivid and detailed your mental map, the more 'hooks' you have to attach information. You can build multiple palaces for different subjects."
+      },
+      {
+        label: "Step 2 — Define Your Stations",
+        text: "Walk your palace mentally and identify 10–20 specific, distinct stations in a fixed order: the front door, the coat rack, the kitchen counter, the fridge, the stove… Each station will hold one chunk of information."
+      },
+      {
+        mnemonic: true,
+        label: "The PLACE Checklist",
+        text: "<strong>P</strong>ath is fixed · <strong>L</strong>ocations are distinct · <strong>A</strong>ctions are vivid · <strong>C</strong>onnections are bizarre · <strong>E</strong>motion is present"
+      },
+      {
+        label: "Step 3 — Rehearse the Walk",
+        text: "Before adding content, walk your empty palace several times until the route is automatic. Then begin placing images. Review by walking the route — first with eyes closed, then by reciting what you encounter at each station."
+      }
+    ]
+  },
+  {
+    eyebrow: "Chamber V · The Workshop",
+    title: "Encoding with Emotion & Absurdity",
+    locus: "A giant flaming cello hangs from the ceiling. A small cat in a graduation cap is arguing with a skeleton at a chemistry bench. Nothing here is normal.",
+    sections: [
+      {
+        label: "The Von Restorff Effect",
+        text: "Isolated, unusual items are remembered far better than ordinary ones. Your brain flags novelty as important. This is why memory champions always describe bizarre, violent, funny, or emotionally charged images — the stranger, the stickier."
+      },
+      {
+        label: "Rules for Vivid Images",
+        text: "Make your palace images: (1) Over-the-top large or tiny, (2) Moving or animated, (3) Multisensory — add a smell, sound, or texture, (4) Emotionally charged — funny, shocking, or beautiful, (5) Personally meaningful. A dancing giant mitochondria is unforgettable; a labeled diagram is not."
+      },
+      {
+        mnemonic: true,
+        label: "The SMASHIN' Rule",
+        text: "<strong>S</strong>ymbols · <strong>M</strong>otion · <strong>A</strong>ssociation · <strong>S</strong>exual · <strong>H</strong>umour · <strong>I</strong>magination · <strong>N</strong>umbers — pack as many of these qualities into your image as possible."
+      }
+    ]
+  },
+  {
+    eyebrow: "Chamber VI · The Exit Hall",
+    title: "Build Your Own Palace",
+    locus: "The final hall has blank doorways waiting to be named. A fountain in the centre has a single inscription: the palace is yours now.",
+    sections: [
+      {
+        label: "Your 5-Step Framework",
+        text: "1. Choose a unit of study and list its 6–10 core concepts. 2. Select a familiar location as your palace. 3. Map one concept (chunk) per room/station. 4. Create one vivid, absurd image per station that encodes the concept + a mnemonic. 5. Walk your palace daily for one week, then weekly until the exam."
+      },
+      {
+        chunk: true,
+        items: [
+          { icon: "📋", name: "List", desc: "6–10 core concepts" },
+          { icon: "🏠", name: "Palace", desc: "Pick your location" },
+          { icon: "🗿", name: "Place", desc: "One concept per room" },
+          { icon: "🎭", name: "Encode", desc: "Vivid bizarre image" },
+          { icon: "🚶", name: "Walk", desc: "Rehearse the route" }
+        ]
+      },
+      {
+        label: "Spaced Repetition Tip",
+        text: "Walk your palace on Day 1, Day 3, Day 7, Day 14, and Day 30. Each rehearsal reinforces the memory trace at exactly the right moment — just before it would fade. Combine this with self-testing (cover your notes and walk from memory) for maximum retention."
+      },
+      {
+        mnemonic: true,
+        label: "Final Anchor",
+        text: "<strong>\"A place for everything, and everything in its place\"</strong> — the memory palace is simply that principle, applied to knowledge itself."
+      }
+    ]
+  }
+];
+
+function enterPalace() {
+  document.getElementById('gate').style.display = 'none';
+  const palace = document.getElementById('palace');
+  palace.style.display = 'block';
+  palace.scrollIntoView({ behavior: 'smooth' });
+}
+
+function openRoom(index) {
+  const r = rooms[index];
+  let html = `
+    <div class="modal-eyebrow">${r.eyebrow}</div>
+    <div class="modal-title">${r.title}</div>
+    <div class="modal-locus">🕯️ ${r.locus}</div>
+  `;
+  for (const s of r.sections) {
+    if (s.chunk) {
+      html += `<div class="modal-content-block"><div class="section-label">Chunked Breakdown</div><div class="chunks">`;
+      for (const c of s.items) {
+        html += `<div class="chunk"><div class="chunk-icon">${c.icon}</div><div class="chunk-name">${c.name}</div><div class="chunk-desc">${c.desc}</div></div>`;
+      }
+      html += `</div></div>`;
+    } else if (s.mnemonic) {
+      html += `<div class="mnemonic-box"><div class="mnemonic-label">${s.label}</div><div class="mnemonic-text">${s.text}</div></div>`;
+    } else {
+      html += `<div class="modal-content-block"><div class="section-label">${s.label}</div><p>${s.text}</p></div>`;
+    }
+  }
+  document.getElementById('modal-content').innerHTML = html;
+  document.getElementById('modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+</body>
+</html>
